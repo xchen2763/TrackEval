@@ -72,6 +72,9 @@ if __name__ == '__main__':
                 x = None
             elif setting == 'SEQ_INFO':
                 x = dict(zip(args[setting], [None]*len(args[setting])))
+            elif setting in 'SEQMAP_FILE':
+                # If SEQMAP_FILE is parsed as list, take first element.
+                x = args[setting][0] if isinstance(args[setting], list) else args[setting]
             else:
                 x = args[setting]
             config[setting] = x
