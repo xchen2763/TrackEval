@@ -28,7 +28,7 @@ class HOTA(_BaseMetric):
         # Initialise results
         res = {}
         for field in self.float_array_fields + self.integer_array_fields:
-            res[field] = np.zeros((len(self.array_labels)), dtype=np.float)
+            res[field] = np.zeros((len(self.array_labels)), dtype=float)
         for field in self.float_fields:
             res[field] = 0
 
