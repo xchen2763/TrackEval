@@ -118,7 +118,9 @@ echo -e "${YELLOW}Generating summary CSV...${NC}"
 
 # Create summary CSV
 SUMMARY_CSV="$OUTPUT_FOLDER/$TRACKER/trackeval_summary_northwell.csv"
-echo "Tool,HOTA,DetA,AssA,IDSW,Frag" > "$SUMMARY_CSV"
+echo "Tool,HOTA,DetA,AssA,IDSW,Frag,Dets,Time_min,IDSW_per_min,Frag_per_min" > "$SUMMARY_CSV"
+
+# Northwell: Detection frequency is every 5 seconds, so T (minutes) = Dets / 12
 
 # Extract metrics from each tool's summary file
 for tool in cautery_hook clip_applier grasper monopolar_curved_scissors sealer stapler; do
@@ -139,6 +141,7 @@ for tool in cautery_hook clip_applier grasper monopolar_curved_scissors sealer s
         assa_idx=-1
         idsw_idx=-1
         frag_idx=-1
+        dets_idx=-1
         
         for i in "${!HEADERS[@]}"; do
             case "${HEADERS[$i]}" in
@@ -147,6 +150,7 @@ for tool in cautery_hook clip_applier grasper monopolar_curved_scissors sealer s
                 "AssA") assa_idx=$i ;;
                 "IDSW") idsw_idx=$i ;;
                 "Frag") frag_idx=$i ;;
+                "Dets") dets_idx=$i ;;
             esac
         done
         
@@ -154,13 +158,21 @@ for tool in cautery_hook clip_applier grasper monopolar_curved_scissors sealer s
         hota_val=${VALUES[$hota_idx]:-"N/A"}
         deta_val=${VALUES[$deta_idx]:-"N/A"}
         assa_val=${VALUES[$assa_idx]:-"N/A"}
-        idsw_val=${VALUES[$idsw_idx]:-"N/A"}
-        frag_val=${VALUES[$frag_idx]:-"N/A"}
+        idsw_val=${VALUES[$idsw_idx]:-"0"}
+        frag_val=${VALUES[$frag_idx]:-"0"}
+        dets_val=${VALUES[$dets_idx]:-"1"}
+        
+        # Calculate time in minutes: T = Dets / 12 (detection every 5 seconds)
+        time_min=$(awk "BEGIN {printf \"%.3f\", $dets_val / 12}")
+        
+        # Calculate normalized metrics: IDSW_per_min = IDSW / T, Frag_per_min = Frag / T
+        idsw_per_min=$(awk "BEGIN {if ($dets_val > 0) printf \"%.3f\", $idsw_val / ($dets_val / 12); else print \"0\"}")
+        frag_per_min=$(awk "BEGIN {if ($dets_val > 0) printf \"%.3f\", $frag_val / ($dets_val / 12); else print \"0\"}")
         
         # Write to CSV
-        echo "$tool,$hota_val,$deta_val,$assa_val,$idsw_val,$frag_val" >> "$SUMMARY_CSV"
+        echo "$tool,$hota_val,$deta_val,$assa_val,$idsw_val,$frag_val,$dets_val,$time_min,$idsw_per_min,$frag_per_min" >> "$SUMMARY_CSV"
     else
-        echo "$tool,N/A,N/A,N/A,N/A,N/A" >> "$SUMMARY_CSV"
+        echo "$tool,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A" >> "$SUMMARY_CSV"
     fi
 done
 

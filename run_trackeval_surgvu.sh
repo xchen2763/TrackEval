@@ -118,7 +118,9 @@ echo -e "${YELLOW}Generating summary CSV...${NC}"
 
 # Create summary CSV
 SUMMARY_CSV="$OUTPUT_FOLDER/$TRACKER/trackeval_summary_surgvu.csv"
-echo "Tool,HOTA,DetA,AssA,IDSW,Frag" > "$SUMMARY_CSV"
+echo "Tool,HOTA,DetA,AssA,IDSW,Frag,Dets,Time_min,IDSW_per_min,Frag_per_min" > "$SUMMARY_CSV"
+
+# SurgVU: Detection frequency is every 1 second, so T (minutes) = Dets / 60
 
 # Get all tool types dynamically from the results directory
 for tool_dir in "$OUTPUT_FOLDER/$TRACKER"/*/; do
@@ -141,6 +143,7 @@ for tool_dir in "$OUTPUT_FOLDER/$TRACKER"/*/; do
             assa_idx=-1
             idsw_idx=-1
             frag_idx=-1
+            dets_idx=-1
             
             for i in "${!HEADERS[@]}"; do
                 case "${HEADERS[$i]}" in
@@ -149,6 +152,7 @@ for tool_dir in "$OUTPUT_FOLDER/$TRACKER"/*/; do
                     "AssA") assa_idx=$i ;;
                     "IDSW") idsw_idx=$i ;;
                     "Frag") frag_idx=$i ;;
+                    "Dets") dets_idx=$i ;;
                 esac
             done
             
@@ -156,13 +160,21 @@ for tool_dir in "$OUTPUT_FOLDER/$TRACKER"/*/; do
             hota_val=${VALUES[$hota_idx]:-"N/A"}
             deta_val=${VALUES[$deta_idx]:-"N/A"}
             assa_val=${VALUES[$assa_idx]:-"N/A"}
-            idsw_val=${VALUES[$idsw_idx]:-"N/A"}
-            frag_val=${VALUES[$frag_idx]:-"N/A"}
+            idsw_val=${VALUES[$idsw_idx]:-"0"}
+            frag_val=${VALUES[$frag_idx]:-"0"}
+            dets_val=${VALUES[$dets_idx]:-"1"}
+            
+            # Calculate time in minutes: T = Dets / 60 (detection every 1 second)
+            time_min=$(awk "BEGIN {printf \"%.3f\", $dets_val / 60}")
+            
+            # Calculate normalized metrics: IDSW_per_min = IDSW / T, Frag_per_min = Frag / T
+            idsw_per_min=$(awk "BEGIN {if ($dets_val > 0) printf \"%.3f\", $idsw_val / ($dets_val / 60); else print \"0\"}")
+            frag_per_min=$(awk "BEGIN {if ($dets_val > 0) printf \"%.3f\", $frag_val / ($dets_val / 60); else print \"0\"}")
             
             # Write to CSV
-            echo "$tool,$hota_val,$deta_val,$assa_val,$idsw_val,$frag_val" >> "$SUMMARY_CSV"
+            echo "$tool,$hota_val,$deta_val,$assa_val,$idsw_val,$frag_val,$dets_val,$time_min,$idsw_per_min,$frag_per_min" >> "$SUMMARY_CSV"
         else
-            echo "$tool,N/A,N/A,N/A,N/A,N/A" >> "$SUMMARY_CSV"
+            echo "$tool,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A" >> "$SUMMARY_CSV"
         fi
     fi
 done
